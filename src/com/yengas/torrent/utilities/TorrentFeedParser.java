@@ -55,11 +55,8 @@ public class TorrentFeedParser {
 	/**
 	 * Default matcher which returns the rss field's content.
 	 */
-	private static final Matcher defaultMatcher = new Matcher() {
-		@Override
-		public Object[] match(String content) {
+	private static final Matcher defaultMatcher = (content) -> {
 			return new Object[] { content };
-		}
 	};
 
 	/**
@@ -69,8 +66,7 @@ public class TorrentFeedParser {
 	 * @param rssField
 	 */
 	public void matchField(Torrent.Field torrentField, String rssField) {
-		matchList.add(new Match(new Torrent.Field[] { torrentField }, rssField,
-				defaultMatcher));
+		matchList.add(new Match(new Torrent.Field[] { torrentField }, rssField, defaultMatcher));
 	}
 
 	/**
@@ -82,8 +78,7 @@ public class TorrentFeedParser {
 	 * @param fields
 	 * @param matcher
 	 */
-	public void matchAll(String rssField, Torrent.Field[] fields,
-			Matcher matcher) {
+	public void matchAll(String rssField, Torrent.Field[] fields, Matcher matcher) {
 		matchList.add(new Match(fields, rssField, matcher));
 	}
 
@@ -95,10 +90,8 @@ public class TorrentFeedParser {
 	 * @param rssField
 	 * @param matcher
 	 */
-	public void matchFiltered(Torrent.Field field, String rssField,
-			Matcher matcher) {
-		matchList.add(new Match(new Torrent.Field[] { field }, rssField,
-				matcher));
+	public void matchFiltered(Torrent.Field field, String rssField, Matcher matcher) {
+		matchList.add(new Match(new Torrent.Field[] { field }, rssField, matcher));
 	}
 
 	/**
@@ -111,9 +104,9 @@ public class TorrentFeedParser {
 		StringBuilder content = new StringBuilder("");
 		try {
 			URLConnection urlConnection = url.openConnection();
-			BufferedReader br = new BufferedReader(new InputStreamReader(
-					urlConnection.getInputStream(), "UTF-8"));
+			BufferedReader br = new BufferedReader(new InputStreamReader(urlConnection.getInputStream(), "UTF-8"));
 			String line = null;
+			
 			while ((line = br.readLine()) != null) {
 				content.append(line);
 			}
@@ -132,7 +125,7 @@ public class TorrentFeedParser {
 	 * @return List
 	 * @see {@link TorrentFeedParser#getContent(URL)}
 	 */
-	public List<Torrent> execute(URL uri, String pathToItems) {
+	public List<Torrent> execute(URL uri, String pathToItems) throws Exception {
 		return execute(getContent(uri), pathToItems);
 	}
 
@@ -143,37 +136,32 @@ public class TorrentFeedParser {
 	 * @param content
 	 * @param pathToItems
 	 * @return
+	 * @throws Exception 
 	 */
-	public List<Torrent> execute(String content, String pathToItems) {
+	public List<Torrent> execute(String content, String pathToItems) throws Exception {
 		ArrayList<Torrent> torrents = new ArrayList<Torrent>();
 		XPath xPath = XPathFactory.newInstance().newXPath();
-		try {
-			DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
-			Document document = builder.parse(new InputSource(new StringReader(content)));
+		DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+		Document document = builder.parse(new InputSource(new StringReader(content)));
+		NodeList torrentList = (NodeList) xPath.compile(pathToItems).evaluate(document, XPathConstants.NODESET);
+		int index, length = torrentList.getLength();
+		Node torrentNode;
 
-			NodeList torrentList = (NodeList) xPath.compile(pathToItems).evaluate(document, XPathConstants.NODESET);
-
-			int index, length = torrentList.getLength();
-			Node torrentNode;
-
-			for (index = 0; index < length; index++) {
-				torrentNode = torrentList.item(index);
-
-				Torrent torrent = new Torrent();
-				for (Match m : matchList) {
-					String fieldContent = xPath.compile(m.rssField).evaluate(torrentNode);
-					Object[] fieldValues = m.match.match(fieldContent);
-					int i;
-					for (i = 0; i < m.fields.length; i++) {
-						torrent.setField(m.fields[i], fieldValues[i]);
-					}
+		for (index = 0; index < length; index++) {
+			torrentNode = torrentList.item(index);
+			Torrent torrent = new Torrent();
+			
+			for (Match m : matchList) {
+				String fieldContent = xPath.compile(m.rssField).evaluate(torrentNode);
+				Object[] fieldValues = m.match.match(fieldContent);
+				int i;
+				
+				for (i = 0; i < m.fields.length; i++) {
+					torrent.setField(m.fields[i], fieldValues[i]);
 				}
-				torrents.add(torrent);
-
 			}
-
-		} catch (Exception e) {
-			e.printStackTrace();
+			
+			torrents.add(torrent);
 		}
 
 		return torrents;

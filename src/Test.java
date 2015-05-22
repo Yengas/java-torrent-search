@@ -1,14 +1,25 @@
+import java.util.ArrayList;
 import java.util.List;
 
 import com.yengas.torrent.Torrent;
 import com.yengas.torrent.sites.KickassTO;
 import com.yengas.torrent.sites.NyaaEU;
+import com.yengas.torrent.sites.TorrentSite;
 
 public class Test {
 
 	public static void main(String[] args) {
-		List<Torrent> torrents = KickassTO.search("asd");
-		torrents.addAll(NyaaEU.search("asd"));
+		TorrentSite[] sites = new TorrentSite[]{ new KickassTO(), new NyaaEU() };
+		List<Torrent> torrents = new ArrayList<>();
+		String term = "asd";
+		
+		for(TorrentSite site : sites){
+			try {
+				torrents.addAll( site.search(term) );
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
 		
 		for(Torrent t : torrents){
 			System.out.println("Title: " + t.getTitle());
